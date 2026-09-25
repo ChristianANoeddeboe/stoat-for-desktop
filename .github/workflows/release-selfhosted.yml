@@ -132,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: appimage-x64
-          path: dist
+          path: dist/*.AppImage*
 
   release:
     name: Publish Release
