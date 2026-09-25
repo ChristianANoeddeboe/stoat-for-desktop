@@ -21,6 +21,10 @@ Application for Windows, macOS, and Linux.
 
 - All downloads and instructions for Stoat can be found on our [Website](https://stoat.chat/download).
 
+### Self-hosted servers
+
+On first launch the app asks which server to use: enter your server's address (for example `stoat.example.com`) or pick the official stoat.chat. To switch later, use **Change Server…** in the tray menu. The `--force-server <url>` flag overrides the saved choice.
+
 ## Development Guide
 
 _Contribution guidelines for Desktop app TBA!_

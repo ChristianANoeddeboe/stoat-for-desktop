@@ -8,9 +8,10 @@ import started from "electron-squirrel-startup";
 import { initAutoLaunch } from "./native/autoLaunch";
 import { config } from "./native/config";
 import { initDiscordRpc } from "./native/discordRpc";
+import { getServerUrl } from "./native/server";
 import { initTray } from "./native/tray";
 import { initVirtualMic } from "./native/virtualMic";
-import { BUILD_URL, createMainWindow, mainWindow } from "./native/window";
+import { createMainWindow, mainWindow } from "./native/window";
 
 // In Flatpak, we have to update the temp dir to a shared directory across host and sandbox;
 // otherwise, the icon will not show up in the tray when using app indicators.
@@ -106,9 +107,9 @@ if (acquiredLock) {
 
   // ensure URLs launch in external context
   app.on("web-contents-created", (_, contents) => {
-    // prevent navigation out of build URL origin
+    // prevent navigation out of the server's origin
     contents.on("will-navigate", (event, navigationUrl) => {
-      if (new URL(navigationUrl).origin !== BUILD_URL.origin) {
+      if (new URL(navigationUrl).origin !== getServerUrl()?.origin) {
         event.preventDefault();
       }
     });

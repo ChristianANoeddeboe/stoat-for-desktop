@@ -12,19 +12,19 @@ import {
 } from "electron";
 
 import windowIconAsset from "../../assets/desktop/icon.png?asset";
+import serverPickerHtml from "../serverPicker.html?raw";
 
 import { config } from "./config";
+import { getServerUrl, setServerPickerError } from "./server";
 import { updateTrayMenu } from "./tray";
 
 // global reference to main window
 export let mainWindow: BrowserWindow;
 
-// currently in-use build
-export const BUILD_URL = new URL(
-  app.commandLine.hasSwitch("force-server")
-    ? app.commandLine.getSwitchValue("force-server")
-    : /*MAIN_WINDOW_VITE_DEV_SERVER_URL ??*/ "https://stoat.chat/app",
-);
+// the server picker, loaded as a page of its own
+const SERVER_PICKER_URL = `data:text/html;charset=utf-8,${encodeURIComponent(
+  serverPickerHtml,
+)}`;
 
 // internal window state
 let shouldQuit = false;
@@ -88,10 +88,29 @@ export function createMainWindow() {
     mainWindow.maximize();
   }
 
+  // show the server picker if the server can't be loaded
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      const server = getServerUrl();
+      if (
+        !isMainFrame ||
+        // aborted, e.g. by another navigation
+        errorCode === -3 ||
+        !server ||
+        new URL(validatedURL).origin !== server.origin
+      ) {
+        return;
+      }
+
+      showServerPicker(
+        `Could not load ${server.host} (${errorDescription}). Check your connection, or pick another server.`,
+      );
+    },
+  );
+
   // load the entrypoint
-  mainWindow
-    .loadURL(BUILD_URL.toString())
-    .then(() => mainWindow.webContents.reload());
+  loadServer();
 
   // minimise window to tray
   mainWindow.on("close", (event) => {
@@ -264,6 +283,32 @@ export function createMainWindow() {
 
   // let i = 0;
   // setInterval(() => setBadgeCount((++i % 30) + 1), 1000);
+}
+
+/**
+ * Load the chosen server, or ask for one if none is chosen yet
+ */
+export function loadServer() {
+  const server = getServerUrl();
+  if (!server) {
+    showServerPicker();
+    return;
+  }
+
+  // failures are handled by the did-fail-load listener
+  mainWindow
+    .loadURL(server.toString())
+    .then(() => mainWindow.webContents.reload())
+    .catch(() => undefined);
+}
+
+/**
+ * Show the server picker
+ * @param error Why the current server could not be loaded
+ */
+export function showServerPicker(error?: string) {
+  setServerPickerError(error ?? null);
+  mainWindow.loadURL(SERVER_PICKER_URL).catch(() => undefined);
 }
 
 /**
