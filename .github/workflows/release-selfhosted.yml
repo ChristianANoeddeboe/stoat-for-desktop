@@ -1,0 +1,168 @@
+name: Release (self-hosted fork)
+
+# Builds Windows and Linux releases when a tag like v1.5.4-selfhosted.1 is pushed.
+# The annotated tag's message becomes the release notes.
+on:
+  push:
+    tags:
+      - "v*-selfhosted.*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout assets
+        run: git -c submodule."assets".update=checkout submodule update --init assets
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Make installer
+        run: pnpm run make --platform=win32 --arch=x64 --targets=@electron-forge/maker-squirrel
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-x64
+          path: out/make/squirrel.windows/x64/*
+
+  linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout assets
+        run: git -c submodule."assets".update=checkout submodule update --init assets
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Package
+        run: pnpm run package
+
+      - name: Tar gz
+        run: |
+          cd ./out/Stoat-linux-x64
+          tar -zcvf ../../Stoat.tar.gz .
+          cd ../..
+          cp Stoat.tar.gz "Stoat-${GITHUB_REF_NAME#v}-linux-x64.tar.gz"
+
+      - name: Upload package for AppImage build
+        uses: actions/upload-artifact@v6
+        with:
+          name: stoat-linux-package-x64
+          path: ./Stoat.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-x64-tarball
+          path: ./Stoat-*-linux-x64.tar.gz
+
+  appimage:
+    name: Build AppImage
+    needs: linux
+    runs-on: ubuntu-latest
+    container: ghcr.io/pkgforge-dev/archlinux:latest
+
+    steps:
+      - name: Preparing Container
+        uses: pkgforge-dev/anylinux-setup-action@0964f2258d6c93d1391359978dde081fd8b3c6af # v2
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Checkout assets
+        run: |
+          git config --global --add safe.directory $(pwd)
+          git -c submodule."assets".update=checkout submodule update --init assets
+
+      - name: Install Dependencies
+        run: /bin/sh ./.github/build/appimage/get-dependencies.sh
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: stoat-linux-package-x64
+          path: /tmp/stoat
+
+      - name: Extract Artifact
+        run: /bin/sh ./.github/build/appimage/extract-artifact.sh
+        env:
+          BUILD_ARCH: x64
+          BUILD_VERSION: ${{ github.ref_name }}
+
+      - name: Make & Test AppImage
+        run: /bin/sh ./.github/build/appimage/make-appimage.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: appimage-x64
+          path: dist
+
+  release:
+    name: Publish Release
+    needs: [windows, linux, appimage]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read release notes from the tag
+        run: |
+          git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git for-each-ref "refs/tags/${GITHUB_REF_NAME}" --format='%(contents)' > notes.md
+          cat notes.md
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: "{windows-x64,linux-x64-tarball,appimage-x64}"
+          path: release
+          merge-multiple: true
+
+      - name: Publish
+        run: |
+          ls -la release
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag \
+            --latest \
+            --title "Stoat Desktop ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
