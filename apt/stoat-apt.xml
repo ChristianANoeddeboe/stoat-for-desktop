@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>stoat-apt</Name>
+  <Repository>registry.noddeboe.dk/stoat-apt:1</Repository>
+  <Registry>https://github.com/ChristianANoeddeboe/stoat-for-desktop/tree/feat/self-hosted-instance/apt</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/ChristianANoeddeboe/stoat-for-desktop</Support>
+  <Project>https://github.com/ChristianANoeddeboe/stoat-for-desktop</Project>
+  <Overview>Signed apt repository for Stoat Desktop. Every 15 minutes it mirrors the .deb from the latest GitHub release of the fork, rebuilds the index and signs it with a key generated on first start (kept in the data path, never leaves the server).&#13;
+&#13;
+Client setup:&#13;
+curl -fsSL https://apt.noddeboe.dk/stoat.gpg | sudo tee /usr/share/keyrings/stoat.gpg &gt;/dev/null&#13;
+echo "deb [signed-by=/usr/share/keyrings/stoat.gpg] https://apt.noddeboe.dk stable main" | sudo tee /etc/apt/sources.list.d/stoat.list&#13;
+sudo apt update &amp;&amp; sudo apt install stoat-desktop&#13;
+</Overview>
+  <Category>Network:Web Tools:Utilities</Category>
+  <WebUI/>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Data Path" Target="/data" Default="/mnt/user/appdata/stoat-apt" Mode="rw" Description="Signing key (gnupg/) and the served repository (repo/)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/stoat-apt</Config>
+  <Config Name="GitHub repository" Target="GITHUB_REPO" Default="ChristianANoeddeboe/stoat-for-desktop" Mode="" Description="Repository whose latest release provides the .deb" Type="Variable" Display="advanced" Required="true" Mask="false">ChristianANoeddeboe/stoat-for-desktop</Config>
+  <Config Name="Check interval" Target="INTERVAL" Default="900" Mode="" Description="Seconds between release checks" Type="Variable" Display="advanced" Required="true" Mask="false">900</Config>
+  <Config Name="Versions kept" Target="KEEP" Default="3" Mode="" Description="How many .deb versions to keep for downgrades" Type="Variable" Display="advanced" Required="true" Mask="false">3</Config>
+  <Config Name="Traefik enable" Target="traefik.enable" Default="true" Mode="" Description="" Type="Label" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Traefik hostname" Target="traefik.http.routers.stoat-apt.rule" Default="Host(`apt.noddeboe.dk`)" Mode="" Description="" Type="Label" Display="always" Required="false" Mask="false">Host(`apt.noddeboe.dk`)</Config>
+  <Config Name="Traefik Entrypoints" Target="traefik.http.routers.stoat-apt.entrypoints" Default="websecure" Mode="" Description="" Type="Label" Display="always" Required="false" Mask="false">websecure</Config>
+  <Config Name="Traefik certresolver" Target="traefik.http.routers.stoat-apt.tls.certresolver" Default="cloudflare" Mode="" Description="" Type="Label" Display="always" Required="false" Mask="false">cloudflare</Config>
+  <Config Name="Traefik port" Target="traefik.http.services.stoat-apt.loadbalancer.server.port" Default="80" Mode="" Description="" Type="Label" Display="always" Required="false" Mask="false">80</Config>
+</Container>

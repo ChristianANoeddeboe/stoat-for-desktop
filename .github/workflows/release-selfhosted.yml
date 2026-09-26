@@ -1,6 +1,6 @@
 name: Release (self-hosted fork)
 
-# Builds Windows and Linux releases when a tag like v1.5.4-selfhosted.1 is pushed.
+# Builds Windows and Linux (tarball, deb, AppImage) releases when a tag like v1.5.4-selfhosted.1 is pushed.
 # The annotated tag's message becomes the release notes.
 on:
   push:
@@ -80,6 +80,12 @@ jobs:
           cd ../..
           cp Stoat.tar.gz "Stoat-${GITHUB_REF_NAME#v}-linux-x64.tar.gz"
 
+      # Picked up by the apt repository (apt/update-repo.sh)
+      - name: Make deb
+        run: |
+          sudo apt-get install -y fakeroot
+          pnpm run make --platform=linux --arch=x64 --targets=deb --skip-package
+
       - name: Upload package for AppImage build
         uses: actions/upload-artifact@v6
         with:
@@ -91,6 +97,12 @@ jobs:
         with:
           name: linux-x64-tarball
           path: ./Stoat-*-linux-x64.tar.gz
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-x64-deb
+          path: out/make/deb/x64/*.deb
 
   appimage:
     name: Build AppImage
@@ -152,7 +164,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
-          pattern: "{windows-x64,linux-x64-tarball,appimage-x64}"
+          pattern: "{windows-x64,linux-x64-tarball,linux-x64-deb,appimage-x64}"
           path: release
           merge-multiple: true
 

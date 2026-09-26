@@ -1,3 +1,4 @@
+import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerFlatpak } from "@electron-forge/maker-flatpak";
 import { MakerFlatpakOptionsConfig } from "@electron-forge/maker-flatpak/dist/Config";
 import { MakerSquirrel } from "@electron-forge/maker-squirrel";
@@ -38,6 +39,21 @@ const makers: ForgeConfig["makers"] = [
     copyright: "Copyright (C) 2025 Revolt Platforms LTD",
   }),
   new MakerZIP({}),
+  // Published through the self-hosted apt repository (see apt/)
+  new MakerDeb({
+    options: {
+      name: STRINGS.execName,
+      productName: STRINGS.name,
+      genericName: "Chat",
+      description: STRINGS.description,
+      bin: STRINGS.execName,
+      maintainer: "ChristianANoeddeboe <christian@noddeboe.dk>",
+      homepage: "https://github.com/ChristianANoeddeboe/stoat-for-desktop",
+      icon: `${ASSET_DIR}/hicolor/512x512.png`,
+      categories: ["Network", "InstantMessaging"],
+      section: "net",
+    },
+  }),
   new MakerFlatpak({
     options: {
       id: "chat.stoat.StoatDesktop",
