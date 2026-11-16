@@ -10,7 +10,6 @@ import { config } from "./native/config";
 import { initDiscordRpc } from "./native/discordRpc";
 import { getServerUrl } from "./native/server";
 import { initTray } from "./native/tray";
-import { initVirtualMic } from "./native/virtualMic";
 import { createMainWindow, mainWindow } from "./native/window";
 
 // In Flatpak, we have to update the temp dir to a shared directory across host and sandbox;
@@ -71,7 +70,6 @@ if (acquiredLock) {
 
     initTray();
     initDiscordRpc();
-    initVirtualMic();
     initAutoLaunch();
 
     // Windows specific fix for notifications
