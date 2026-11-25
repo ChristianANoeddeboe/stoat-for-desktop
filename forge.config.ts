@@ -49,6 +49,8 @@ const makers: ForgeConfig["makers"] = [
       homepage: "https://github.com/ChristianANoeddeboe/stoat-for-desktop",
       icon: `${ASSET_DIR}/hicolor/512x512.png`,
       categories: ["Network", "InstantMessaging"],
+      // open stoat:// links
+      mimeType: ["x-scheme-handler/stoat"],
       section: "net",
     },
   }),
