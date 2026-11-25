@@ -7,9 +7,16 @@ import started from "electron-squirrel-startup";
 
 import { initAutoLaunch } from "./native/autoLaunch";
 import { config } from "./native/config";
+import {
+  findDeepLink,
+  initDeepLinks,
+  openDeepLink,
+  registerProtocol,
+} from "./native/deepLink";
 import { initDiscordRpc } from "./native/discordRpc";
 import { getServerUrl } from "./native/server";
 import { initTray } from "./native/tray";
+import { destroyVirtualMic } from "./native/virtualMic";
 import { createMainWindow, mainWindow } from "./native/window";
 
 // In Flatpak, we have to update the temp dir to a shared directory across host and sandbox;
@@ -56,9 +63,25 @@ if (acquiredLock) {
   // start auto update logic
   updateElectronApp({ onNotifyUser });
 
+  // facilitate stoat:// links
+  registerProtocol();
+
+  // necessary macOS glue
+  let pendingDeepLink = findDeepLink(process.argv);
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    // openDeepLink recreates the window if macOS closed it
+    if (app.isReady()) {
+      openDeepLink(url);
+    } else {
+      pendingDeepLink = url;
+    }
+  });
+
   // create and configure the app when electron is ready
   app.on("ready", () => {
     // create window and application contexts
+    initDeepLinks();
     createMainWindow();
 
     // save first launch state
@@ -72,14 +95,28 @@ if (acquiredLock) {
     initDiscordRpc();
     initAutoLaunch();
 
+    // follow the link the app was started with; after the tray exists, as
+    // showing the window updates the tray menu
+    if (pendingDeepLink) {
+      openDeepLink(pendingDeepLink);
+      pendingDeepLink = undefined;
+    }
+
     // Windows specific fix for notifications
     if (process.platform === "win32") {
       app.setAppUserModelId("chat.stoat.notifications");
     }
   });
 
-  // focus the window if we try to launch again
-  app.on("second-instance", () => {
+  // Focus the window if we try to launch again, following any stoat:// link
+  // it was launched with (Windows and Linux)
+  app.on("second-instance", (_event, argv) => {
+    const link = findDeepLink(argv);
+    if (link) {
+      openDeepLink(link);
+      return;
+    }
+
     mainWindow.show();
     mainWindow.restore();
     mainWindow.focus();
@@ -125,6 +162,16 @@ if (acquiredLock) {
       }
 
       return { action: "deny" };
+    });
+  });
+
+  let readyToQuit = false;
+  app.on("will-quit", (e) => {
+    if (readyToQuit) return;
+    e.preventDefault();
+    destroyVirtualMic().finally(() => {
+      readyToQuit = true;
+      app.quit();
     });
   });
 } else {
